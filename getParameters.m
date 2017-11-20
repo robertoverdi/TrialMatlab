@@ -22,7 +22,6 @@ while (j <= length(data_string))
     strn(j,1) = textscan(data_string{j}, '%f', 'Delimiter', ';');
     j = j+ 1;
 end
- 
 
 data = cell2mat(strn')
 

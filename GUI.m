@@ -54,34 +54,47 @@ function GUI_OpeningFcn(hObject, eventdata, handles, varargin)
 
  Fs = 1000;   % Frequenza di campionamento segnale
  Fc1 = 5;     % Frequenza di taglio inferiore
- Fc2 = 400;   % Frequenza di taglio inferiore
- jSlider = javax.swing.JSlider;
-
-[time, rec_fem, vas_lat, vas_med_O, vas_med_V] = getParameters(Fs, Fc1, Fc2);
-[jhSlider, hContainer] = javacomponent(jSlider);
+ Fc2 = 400;   % Frequenza di taglio superiore 
  
- set(hContainer,'units','pixel','position',[100,25,960,50]);
- set(jSlider, 'Value',5, 'MajorTickSpacing',5,'MinorTickSpacing', 0 ,'PaintLabels',true, 'PaintTicks',true, 'minimum', 5, 'maximum', (length(time)/Fs) - 6);
+% Inizializzazione slider
+jSlider = javax.swing.JSlider;
 
- set(handles.axes1, 'units', 'pixel' , 'Position',[100 170 960 451])
+% Richiamo alla funzione per ottenere parametri
+[time, rec_fem, vas_lat, vas_med_O, vas_med_V] = getParameters(Fs, Fc1, Fc2);
 
+[jhSlider, hContainer] = javacomponent(jSlider);
 
-% Visualizzazione dei primi cinque secondi delle tracce
-p = plot(time(1:5000), vas_med_O(1:5000), time(1:5000), vas_lat(1:5000) + 50, time(1:5000), vas_med_V(1:5000) + 90, time(1:5000), rec_fem(1:5000) + 130);
-w = get(handles.axes1,'Position');
-v = get(jSlider ,'Value');
-z = get(jhSlider ,'Value');
-%set(p,'Parent', handles.axes1)
-%plot(handles.axes1,time(1:5000), rec_fem_filtered(1:5000),time(1:5000), vas_lat_filtered(1:5000)+40 , time(1:5000), vas_med_O_filtered(1:5000)+80, time(1:5000), vas_med_V_filtered(1:5000)+110)
-%plot(app.UIAxes, rec_fem_filtered,'r' ,time, prova, 'g')
+% Settaggio parametri di inizializzazione slider
+set(hContainer,'units','pixel','position',[100,25,960,50]);
+set(jSlider, 'Value',0, 'MajorTickSpacing',5,'MinorTickSpacing', 2.5 ,'PaintLabels',true, 'PaintTicks',true, 'minimum', 0, 'maximum', (length(time)/Fs) - 6);
+% Settaggio posizione del plot
+set(handles.axes1, 'units', 'pixel' , 'Position',[100 170 960 451])
+ 
+% Estrazione dei primi cinque secondi dei tracciati con l'applicazione delle traslazioni massime
+vas_med_O_x = vas_med_O(1:5001);
+vas_lat_x = vas_lat(1:5001)+ 830;
+vas_med_V_x = vas_med_V(1:5001)+1400;
+rec_fem_x  = rec_fem(1:5001) + 1800;
+ 
+% Calcolo offsets per una migliore rappresentazione delle tracce
+offset_1 = max(vas_med_O_x) - min(vas_lat_x) + 50;
+vas_lat_x = vas_lat_x - abs(offset_1);
+
+offset_2 = max(vas_lat_x) - min(vas_med_V_x) + 50;
+vas_med_V_x = vas_med_V_x - abs(offset_2);
+ 
+offset_3 = max(vas_med_V_x) - min(rec_fem_x) + 50;
+rec_fem_x = rec_fem_x - abs(offset_3);
+
+% Visualizzazione dei primi cinque secondi dei tracciati
+p = plot(time(1:5001), vas_med_O_x, time(1:5001), vas_lat_x , time(1:5001), vas_med_V_x, time(1:5001), rec_fem_x);
+
+% Settaggio plot
 grid
 title('EMG filtered signals')
 xlabel('Time [s]')
 ylabel('Ampiezza segnale [uV]')
 legend("VasMedO", "VasLat", "VasMedV", "RecFem", 'units', 'pixel' , 'position', 'Position',[760 200 200 200])
-%ylim([-600 2000])
-
-
 
 % Choose default command line output for GUI
 handles.output.sliderv = hObject;
@@ -140,48 +153,46 @@ if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColo
 end
 %set(hObject, 'PaintLabels',true, 'PaintTicks',true)
 
-% CallBASck di gestione cambiamento valore slider
+% CallBack di gestione cambiamento valore slider
 function sliderValue(hObject, eventdata, handles)
 slider_value = get(hObject,'Value')
-Fs = 1000;
-x_in = slider_value * Fs;
+
+% Frequenza di campionamento
+Fs = 1000; 
+
+% Calcolo range di campioni appartenenti alla finestra temporale
+x_in = (slider_value * Fs) + 1;
 x_end = (slider_value +5)*Fs;
-% recupero dati a traslazione massima dei segnali
+
+% Recupero dati a traslazione massima dei segnali
 time = handles.output.time
 rec_fem = handles.output.rec_fem + 1800;
 vas_lat = handles.output.vas_lat + 830;
 vas_med_O = handles.output.vas_med_O ;
 vas_med_V = handles.output.vas_med_V + 1400;
 
+% Selezione dei campioni appartenenti alla finestra temporale
 time = time(x_in:x_end);
 rec_fem = rec_fem(x_in:x_end);
 vas_lat = vas_lat(x_in:x_end);
 vas_med_O = vas_med_O(x_in:x_end);
 vas_med_V = vas_med_V(x_in:x_end);
-%y_min = min(min(min(vas_med_O(x_in:x_end),vas_lat(x_in:x_end)),min(vas_med_V(x_in:x_end),rec_fem(x_in:x_end))));
-%y_max = max(max(max(vas_med_O(x_in:x_end),vas_lat(x_in:x_end)),max(vas_med_V(x_in:x_end),rec_fem(x_in:x_end))));
 
-
-offset_1 = max(vas_med_O) - min(vas_lat) + 100;
+% Calcolo offsets, y_min e y_max per ottimizzare la rappresentazione grafica del
+% segnale
+offset_1 = max(vas_med_O) - min(vas_lat) + 50;
 vas_lat = vas_lat - abs(offset_1);
 
-offset_2 = max(vas_lat) - min(vas_med_V) + 100;
+offset_2 = max(vas_lat) - min(vas_med_V) + 50;
 vas_med_V = vas_med_V - abs(offset_2);
 
-offset_3 = max(vas_med_V) - min(rec_fem) + 100;
+offset_3 = max(vas_med_V) - min(rec_fem) + 50;
 rec_fem = rec_fem - abs(offset_3);
 
 y_min = min(min(min(vas_med_O,vas_lat),min(vas_med_V,rec_fem)));
 y_max = max(max(max(vas_med_O,vas_lat),max(vas_med_V,rec_fem)));
 
-p = handles.output.plot;
-%x = time(x_in:x_end,1);
-%p = plot(time(1:5000),vas_med_O (1:5000),time(1:5000), vas_lat(1:5000)+40 , time(1:5000), vas_med_V(1:5000)+80, time(1:5000),rec_fem (1:5000)+110)
-
-%y = rec_fem_filtered(k*1000:k*1000,1);
-%p = plot(time(1:k*1000), rec_fem_filtered(1:k*1000),time(1:k*1000), vas_lat_filtered(1:k*1000) , time(1:k*1000), vas_med_O_filtered(1:k*1000), time(1:k*1000), vas_med_V_filtered(1:k*1000))
-%plot(handles.axes1,time(x_in:x_end), vas_med_O(x_in:x_end), time(x_in:x_end), vas_lat(x_in:x_end) + 830, time(x_in:x_end), vas_med_V(x_in:x_end) + 1400, time(x_in:x_end), rec_fem(x_in:x_end) + 1800);
-%plot(handles.axes1,time(x_in:x_end), vas_med_O(x_in:x_end), time(x_in:x_end), vas_lat(x_in:x_end), time(x_in:x_end), vas_med_V(x_in:x_end), time(x_in:x_end), rec_fem(x_in:x_end));
+% Plot update
 plot(handles.axes1,time, vas_med_O, time, vas_lat, time, vas_med_V, time, rec_fem);
 
 title('EMG filtered signals')
@@ -189,12 +200,10 @@ xlabel('Time [s]')
 ylabel('Ampiezza segnale [uV]')
 legend("VasMedO", "VasLat", "VasMedV", "RecFem", 'units', 'pixel' , 'position', 'Position',[760 200 200 200])
 grid
-%plot(handles.axes1, x,rec_fem_y , x,vas_lat_y + 40,x,vas_med_O_y + 80 ,x, vas_med_V_y + 110)
-%ylim([-1000 1000])
-y_min = round(y_min-50);
-y_max = round(y_max+50);
+
+% Calcolo del limite di rappresentazione delle y
+y_min = round(y_min-20);
+y_max = round(y_max+20);
 ylim([y_min y_max])
 xlim([slider_value slider_value + 5])
-%set(p,'XData',time(1:k*1000),'YData',rec_fem_filtered(1:k*1000))
-%refreshdata(p, 'caller');
-%guidata(hObject, handles);
+
